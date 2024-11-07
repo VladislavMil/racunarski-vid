@@ -1,50 +1,36 @@
 import numpy as np
 import cv2 as cv
 
+# Učitavamo sliku
 image = cv.imread('coins.png')
-cv.imshow("Original: ", image)
 
-gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+# Prebacujemo sliku u HSV prostor boja
+hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
 
-#svi pikseli ispod praga postavljeni na belu boju, a svi pikseli iznad praga su crni. 
-_, thresh = cv.threshold(gray, 150, 255, cv.THRESH_BINARY_INV) 
+# Fino podešeni opseg boja za bakarni novčić
+# Pokušavamo sa svetlijim opsegom i povećanom saturacijom i vrednostima
+lower_bronze = np.array([1, 60, 60])  # Donji prag za bakarnu boju
+upper_bronze = np.array([25, 255, 255])  # Gornji prag za bakarnu boju
 
-kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (9, 9))
+# Kreiramo masku
+mask = cv.inRange(hsv, lower_bronze, upper_bronze)
 
-# smanjuje sum i spaja regione
-closing = cv.morphologyEx(thresh, cv.MORPH_CLOSE, kernel)
+# Dodatno obrađujemo masku za bolje rezultate
+# Koristimo "closing" operaciju za spajanje malih regiona i uklanjanje rupa
+kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
+mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
 
-coins, _ = cv.findContours(closing, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+# Primena "dilate" operacije da se popune eventualne rupe
+mask = cv.dilate(mask, kernel, iterations = 1)
 
-mask = np.zeros_like(closing)
-main_mask = np.zeros_like(closing)
-main_mask.fill(0)
+# Prikaz maske za bakarni novčić
+cv.imshow('Maska', mask)
+cv.imwrite("maska.png", mask)
 
-for coin in coins:
-
-    # Izdvajamo samo element za koji smo zainteresovani:
-    mask.fill(0)
-    cv.drawContours(mask, [coin], -1, 255, -1)
-    
-    # Racunamo prosecnu RGB vrednost za svaki objekat (prosek za svaki element RGB strukture);
-    avg_color = cv.mean(image, mask=mask)[:3]
-
-    # Prosecna boja srebrnog novcica:
-    bg_color = [128, 128, 128]
-
-    # Racunamo razliku vektora 
-    color_diff = np.linalg.norm(np.array(avg_color) - np.array(bg_color))
-
-    if color_diff > 45.0:
-        cv.drawContours(main_mask, [coin], -1, 255, -1)
-
-cv.imshow('Maska: ', main_mask)
-cv.imwrite("coin_mask.png", main_mask)
-
-result = cv.bitwise_and(image, image, mask= main_mask)
-
-cv.imshow('Maskirani novcic: ', result)
-cv.imwrite("result.png", result)
+# Primena maske na originalnu sliku
+result = cv.bitwise_and(image, image, mask=mask)
+cv.imshow('Izdvojen', result)
+cv.imwrite("resultat.png", result)
 
 cv.waitKey(0)
 cv.destroyAllWindows()
