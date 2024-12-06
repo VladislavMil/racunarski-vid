@@ -26,9 +26,12 @@ cv2.waitKey(0)
 
 # Funkcija za prepoznavanje slova P (koristeći oblik konture)
 def is_letter_P(contour):
-    approx = cv2.approxPolyDP(contour, 0.04 * cv2.arcLength(contour, True), True)
-    if len(approx) > 4:  # Provera da li ima dovoljno tačaka za slovo
-        return True
+    approx = cv2.approxPolyDP(contour, 0.02 * cv2.arcLength(contour, True), True)
+    if len(approx) > 5:  # Provera da li ima dovoljno tačaka za slovo
+        x, y, w, h = cv2.boundingRect(contour)
+        aspect_ratio = w / float(h)
+        if 0.3 < aspect_ratio < 0.7:  # Provera proporcija slova "P"
+            return True
     return False
 
 
